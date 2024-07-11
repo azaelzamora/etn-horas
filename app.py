@@ -4,6 +4,10 @@ from datetime import datetime, timedelta
 import pytz
 from flask import Flask, jsonify, send_from_directory
 from apscheduler.schedulers.background import BackgroundScheduler
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
 
 app = Flask(__name__)
 
@@ -30,7 +34,7 @@ def get_all_vehicles():
         data = response.json()
         return [str(vehicle['id']) for vehicle in data['data']]
     except requests.exceptions.RequestException as e:
-        print(f"Error fetching vehicles: {e}")
+        logging.error(f"Error fetching vehicles: {e}")
         return []
 
 def get_time_range(hours):
@@ -50,7 +54,7 @@ def get_trips(vehicle_id, start_ms, end_ms):
         response.raise_for_status()
         return response.json().get('trips', [])
     except requests.exceptions.RequestException as e:
-        print(f"Error fetching trips for vehicle {vehicle_id}: {e}")
+        logging.error(f"Error fetching trips for vehicle {vehicle_id}: {e}")
         return []
 
 def get_driver_name(driver_id):
@@ -61,7 +65,7 @@ def get_driver_name(driver_id):
         driver_data = response.json()
         return driver_data['data'].get('name', f"Unknown Driver ({driver_id})")
     except requests.exceptions.RequestException as e:
-        print(f"Error fetching driver name for ID {driver_id}: {e}")
+        logging.error(f"Error fetching driver name for ID {driver_id}: {e}")
         return f"Unknown Driver ({driver_id})"
 
 def calculate_driver_hours(vehicles, start_ms, end_ms):
@@ -103,9 +107,12 @@ def update_driver_hours():
     global latest_driver_hours
     hours = 24  # You can adjust this value as needed
     vehicles = get_all_vehicles()
+    logging.info(f"Found {len(vehicles)} vehicles")
     start_ms, end_ms = get_time_range(hours)
     
     driver_times, unknown_driver_time, ongoing_trips, unknown_ongoing_trips = calculate_driver_hours(vehicles, start_ms, end_ms)
+    
+    logging.info(f"Calculated hours for {len(driver_times)} drivers")
     
     formatted_data = []
     for driver_id, hours in driver_times.items():
@@ -129,6 +136,7 @@ def update_driver_hours():
         "data": sorted(formatted_data, key=lambda x: x['time'], reverse=True),
         "last_updated": datetime.now(MEXICO_TZ).strftime("%Y-%m-%d %H:%M:%S")
     }
+    logging.info(f"Updated driver hours with {len(formatted_data)} entries")
 
 @app.route('/')
 def index():
@@ -142,6 +150,9 @@ def get_driver_hours():
 scheduler = BackgroundScheduler()
 scheduler.add_job(update_driver_hours, 'interval', minutes=5)
 scheduler.start()
+
+# Run update_driver_hours immediately when the app starts
+update_driver_hours()
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
