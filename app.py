@@ -2,7 +2,7 @@ import os
 import requests
 from datetime import datetime, timedelta
 import pytz
-from flask import Flask, jsonify
+from flask import Flask, jsonify, send_from_directory
 from apscheduler.schedulers.background import BackgroundScheduler
 
 app = Flask(__name__)
@@ -130,14 +130,19 @@ def update_driver_hours():
         "last_updated": datetime.now(MEXICO_TZ).strftime("%Y-%m-%d %H:%M:%S")
     }
 
+@app.route('/')
+def index():
+    return send_from_directory('.', 'index.html')
+
 @app.route('/api/driver-hours')
 def get_driver_hours():
     return jsonify(latest_driver_hours)
 
+# Initialize scheduler
+scheduler = BackgroundScheduler()
+scheduler.add_job(update_driver_hours, 'interval', minutes=5)
+scheduler.start()
+
 if __name__ == '__main__':
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(update_driver_hours, 'interval', minutes=5)
-    scheduler.start()
-    
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
