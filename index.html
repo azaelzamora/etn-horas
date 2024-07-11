@@ -57,12 +57,22 @@
         .controls button:hover {
             background-color: #2980b9;
         }
+        .controls button:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
         .info {
             display: flex;
             justify-content: space-between;
             margin-bottom: 20px;
             font-size: 0.9em;
             color: #7f8c8d;
+        }
+        .feedback {
+            margin-top: 10px;
+            font-size: 0.9em;
+            color: #2980b9;
+            font-weight: bold;
         }
         table {
             width: 100%;
@@ -86,6 +96,12 @@
             font-weight: bold;
             margin-top: 10px;
         }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            font-style: italic;
+            color: #7f8c8d;
+        }
     </style>
 </head>
 <body>
@@ -93,14 +109,16 @@
         <h1>Driver Hours Dashboard</h1>
         <div class="controls">
             <label for="hoursInput">Hours to review:</label>
-            <input type="number" id="hoursInput" min="1" max="168" value="24">
-            <button onclick="updateDriverHours()">Refresh Data</button>
+            <input type="number" id="hoursInput" min="1" max="168" value="24" onchange="updateHoursFeedback()">
+            <button id="refreshButton" onclick="updateDriverHours()">Refresh Data</button>
         </div>
+        <div id="hoursFeedback" class="feedback"></div>
         <div class="info">
             <span>Last updated: <span id="lastUpdated"></span></span>
             <span>Next automatic refresh in <span id="countdownTimer">5:00</span></span>
         </div>
         <div id="errorMessage" class="error"></div>
+        <div id="loadingMessage" class="loading" style="display: none;">Refreshing data...</div>
         <table>
             <thead>
                 <tr>
@@ -118,9 +136,24 @@
         let userHours = 24;
         let countdownInterval;
 
+        function updateHoursFeedback() {
+            const hours = document.getElementById('hoursInput').value;
+            const feedbackElement = document.getElementById('hoursFeedback');
+            if (hours != userHours) {
+                feedbackElement.textContent = `Next query will use the previous ${hours} hours`;
+            } else {
+                feedbackElement.textContent = '';
+            }
+        }
+
         function updateDriverHours() {
             const hours = document.getElementById('hoursInput').value;
             userHours = parseInt(hours);
+            
+            // Show loading message and disable refresh button
+            document.getElementById('loadingMessage').style.display = 'block';
+            document.getElementById('refreshButton').disabled = true;
+            document.getElementById('driverData').innerHTML = '';
             
             axios.get(`/api/driver-hours?hours=${userHours}`)
                 .then(function (response) {
@@ -140,10 +173,16 @@
                         document.getElementById('errorMessage').textContent = 'No data available. The application might still be fetching data.';
                     }
                     startCountdownTimer();
+                    document.getElementById('hoursFeedback').textContent = '';
                 })
                 .catch(function (error) {
                     console.error('Error fetching driver hours:', error);
                     document.getElementById('errorMessage').textContent = 'Error fetching data. Please check the console for more information.';
+                })
+                .finally(function () {
+                    // Hide loading message and enable refresh button
+                    document.getElementById('loadingMessage').style.display = 'none';
+                    document.getElementById('refreshButton').disabled = false;
                 });
         }
 
