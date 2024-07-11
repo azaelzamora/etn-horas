@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driver Hours</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <h1>Driver Hours</h1>
+    <p>Last updated: <span id="lastUpdated"></span></p>
+    <table>
+        <thead>
+            <tr>
+                <th>Driver Name</th>
+                <th>Driving Time</th>
+                <th>Ongoing Trips</th>
+            </tr>
+        </thead>
+        <tbody id="driverData">
+        </tbody>
+    </table>
+
+    <script>
+        function updateDriverHours() {
+            axios.get('/api/driver-hours')
+                .then(function (response) {
+                    const data = response.data;
+                    const tbody = document.getElementById('driverData');
+                    tbody.innerHTML = '';
+                    data.data.forEach(function(driver) {
+                        const row = tbody.insertRow();
+                        row.insertCell(0).textContent = driver.name;
+                        row.insertCell(1).textContent = driver.time;
+                        row.insertCell(2).textContent = driver.ongoing;
+                    });
+                    document.getElementById('lastUpdated').textContent = data.last_updated;
+                })
+                .catch(function (error) {
+                    console.error('Error fetching driver hours:', error);
+                });
+        }
+
+        updateDriverHours();
+        setInterval(updateDriverHours, 300000); // Update every 5 minutes
+    </script>
+</body>
+</html>
