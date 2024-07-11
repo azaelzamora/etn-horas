@@ -28,10 +28,21 @@
             color: red;
             font-weight: bold;
         }
+        .controls {
+            margin-bottom: 20px;
+        }
+        .controls input, .controls button {
+            margin-right: 10px;
+        }
     </style>
 </head>
 <body>
     <h1>Driver Hours</h1>
+    <div class="controls">
+        <label for="hoursInput">Hours to review:</label>
+        <input type="number" id="hoursInput" min="1" max="168" value="24">
+        <button onclick="updateDriverHours()">Refresh Data</button>
+    </div>
     <p>Last updated: <span id="lastUpdated"></span></p>
     <div id="errorMessage" class="error"></div>
     <table>
@@ -48,7 +59,8 @@
 
     <script>
         function updateDriverHours() {
-            axios.get('/api/driver-hours')
+            const hours = document.getElementById('hoursInput').value;
+            axios.get(`/api/driver-hours?hours=${hours}`)
                 .then(function (response) {
                     const data = response.data;
                     const tbody = document.getElementById('driverData');

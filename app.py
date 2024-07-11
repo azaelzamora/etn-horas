@@ -2,7 +2,7 @@ import os
 import requests
 from datetime import datetime, timedelta
 import pytz
-from flask import Flask, jsonify, send_from_directory
+from flask import Flask, jsonify, send_from_directory, request
 from apscheduler.schedulers.background import BackgroundScheduler
 import logging
 
@@ -103,9 +103,7 @@ def format_time(hours):
     hours, minutes = divmod(total_minutes, 60)
     return f"{hours} hours {minutes} minutes"
 
-def update_driver_hours():
-    global latest_driver_hours
-    hours = 24  # You can adjust this value as needed
+def update_driver_hours(hours=24):
     vehicles = get_all_vehicles()
     logging.info(f"Found {len(vehicles)} vehicles")
     start_ms, end_ms = get_time_range(hours)
@@ -132,11 +130,10 @@ def update_driver_hours():
             "ongoing": unknown_ongoing_trips
         })
     
-    latest_driver_hours = {
+    return {
         "data": sorted(formatted_data, key=lambda x: x['time'], reverse=True),
         "last_updated": datetime.now(MEXICO_TZ).strftime("%Y-%m-%d %H:%M:%S")
     }
-    logging.info(f"Updated driver hours with {len(formatted_data)} entries")
 
 @app.route('/')
 def index():
@@ -144,15 +141,13 @@ def index():
 
 @app.route('/api/driver-hours')
 def get_driver_hours():
-    return jsonify(latest_driver_hours)
+    hours = int(request.args.get('hours', 24))
+    return jsonify(update_driver_hours(hours))
 
 # Initialize scheduler
 scheduler = BackgroundScheduler()
-scheduler.add_job(update_driver_hours, 'interval', minutes=5)
+scheduler.add_job(lambda: update_driver_hours(24), 'interval', minutes=5)
 scheduler.start()
-
-# Run update_driver_hours immediately when the app starts
-update_driver_hours()
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
